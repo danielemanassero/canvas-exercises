@@ -1,1 +1,1 @@
-# domestika-canvas
+# Canvas Exercises
