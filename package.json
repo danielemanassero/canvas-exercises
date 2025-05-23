@@ -1,0 +1,16 @@
+{
+  "name": "canvas-exercises",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "sketch": "canvas-sketch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Daniele Manassero",
+  "license": "MIT",
+  "devDependencies": {
+    "canvas-sketch-cli": "^1.15.0"
+  }
+}
