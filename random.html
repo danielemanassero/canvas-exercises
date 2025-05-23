@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <title>Random Canvas</title>
+  </head>
+  
+  <body>
+    <canvas width="600" height="600" id="random-canvas"></canvas>
+
+    <script>
+        const canvas = document.querySelector('#random-canvas');
+        const ctx = canvas.getContext("2d");
+
+        // Disegna un rettangolo pieno rosso
+        ctx.fillStyle = "red"; // Imposta il colore di riempimento
+        ctx.fillRect(50, 50, 150, 100); // x, y, larghezza, altezza
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = '5';
+        ctx.strokeRect(70, 70, 100, 150);
+
+        // Disegna un triangolo
+        ctx.beginPath();
+        ctx.moveTo(50, 200); // Punto di partenza
+        ctx.lineTo(150, 200);
+        ctx.lineTo(100, 150);
+        ctx.closePath(); // Chiude il triangolo
+        ctx.fillStyle = "green";
+        ctx.fill();
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = '2';
+        ctx.stroke();
+
+        // Disegna un cerchio
+        ctx.beginPath();
+        ctx.arc(350, 200, 40, 0, Math.PI * 2, false); // Centro (350,200), raggio 40, cerchio completo
+        ctx.fillStyle = "orange";
+        ctx.fill();
+        ctx.strokeStyle = "purple";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.font = "40px Comic Sans MS";
+        ctx.fillStyle = "navy";
+        ctx.textAlign = "center";
+        ctx.fillText("Ciao Canvas!", canvas.width / 2, 80);
+
+        let img = new Image();
+        img.src = "faro.jpg";
+        img.addEventListener('load', () => {
+            ctx.drawImage(img, 200, 200, 150, 150); // Disegna l'immagine a (10, 10)
+            // Puoi anche ridimensionarla o ritagliarla:
+            // ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+        });
+    </script>
+  </body>
+</html>

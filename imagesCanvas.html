@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disegna Rettangolo con Immagine su Canvas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            max-width: 90vw; /* Fluid width */
+            width: 100%;
+        }
+        canvas {
+            border: 2px solid #cbd5e1; /* Light gray border */
+            background-color: #e2e8f0; /* Lighter background for canvas */
+            cursor: crosshair;
+            border-radius: 0.75rem; /* Rounded corners for canvas */
+            max-width: 100%;
+            height: auto; /* Maintain aspect ratio */
+            display: block; /* Remove extra space below canvas */
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 400px; /* Limit input width */
+        }
+        input[type="file"] {
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            background-color: #f8fafc;
+            color: #475569;
+            cursor: pointer;
+        }
+        label {
+            font-weight: 600;
+            color: #334155;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background-color: #3b82f6; /* Blue button */
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        .btn:hover {
+            background-color: #2563eb; /* Darker blue on hover */
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            background-color: #1d4ed8; /* Even darker blue on active */
+            transform: translateY(0);
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: flex-start;
+                max-width: 1200px;
+            }
+            .controls {
+                min-width: 300px;
+            }
+            canvas {
+                max-width: 70%; /* Canvas takes more space on larger screens */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls flex flex-col gap-4 w-full md:w-1/3">
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">Disegna e Inserisci Immagine</h1>
+
+            <div class="input-group">
+                <label for="backgroundImageInput" class="block text-sm font-medium text-gray-700">Immagine di Sfondo:</label>
+                <input type="file" id="backgroundImageInput" accept="image/*" class="w-full">
+            </div>
+
+            <div class="input-group">
+                <label for="overlayImageInput" class="block text-sm font-medium text-gray-700">Immagine da Inserire:</label>
+                <input type="file" id="overlayImageInput" accept="image/*" class="w-full">
+            </div>
+
+            <button id="resetButton" class="btn w-full">Resetta Canvas</button>
+        </div>
+
+        <canvas id="imageCanvas" class="w-full md:w-2/3"></canvas>
+    </div>
+
+    <script>
+        // Get references to the canvas and its context
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Get references to input elements and button
+        const backgroundImageInput = document.getElementById('backgroundImageInput');
+        const overlayImageInput = document.getElementById('overlayImageInput');
+        const resetButton = document.getElementById('resetButton');
+
+        // Variables to store images
+        let backgroundImage = new Image();
+        let overlayImage = new Image();
+        let isBackgroundImageLoaded = false;
+        let isOverlayImageLoaded = false;
+
+        // Drawing state variables
+        let isDrawing = false;
+        let startX, startY, currentWidth, currentHeight;
+        let drawnRectangle = null; // Stores the final drawn rectangle {x, y, width, height}
+
+        // Default placeholder images (can be replaced by user uploads)
+        const defaultBackgroundImageUrl = 'https://placehold.co/800x600/a78bfa/ffffff?text=Sfondo'; // Purple background
+        const defaultOverlayImageUrl = 'https://placehold.co/200x150/fde047/000000?text=Immagine'; // Yellow overlay
+
+        // Function to load an image from a URL or File object
+        function loadImage(imageObject, source, callback) {
+            imageObject.onload = () => {
+                callback(true);
+            };
+            imageObject.onerror = () => {
+                console.error('Errore nel caricamento dell\'immagine:', source);
+                callback(false);
+            };
+            if (source instanceof File) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imageObject.src = e.target.result;
+                };
+                reader.readAsDataURL(source);
+            } else {
+                imageObject.src = source;
+            }
+        }
+
+        // Function to draw the background image on the canvas
+        function drawBackgroundImage() {
+            if (isBackgroundImageLoaded) {
+                // Clear the entire canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Draw the background image, scaling it to cover the canvas
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                // If no background image, just clear the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // Function to draw the rectangle border
+        function drawRectangle(x, y, width, height) {
+            ctx.strokeStyle = '#ef4444'; // Red border
+            ctx.lineWidth = 4; // Thicker border
+            ctx.setLineDash([6, 3]); // Dashed line
+            ctx.strokeRect(x, y, width, height);
+            ctx.setLineDash([]); // Reset line dash
+        }
+
+        // Function to draw the overlay image inside the specified rectangle
+        function drawOverlayImageInRectangle(rect) {
+            if (isOverlayImageLoaded && rect) {
+                // Ensure the rectangle has valid dimensions
+                if (rect.width > 0 && rect.height > 0) {
+                    // Draw the overlay image, scaling it to fit within the rectangle
+                    ctx.drawImage(overlayImage, rect.x, rect.y, rect.width, rect.height);
+                }
+            }
+        }
+
+        // Function to redraw everything on the canvas
+        function redrawCanvas() {
+            drawBackgroundImage(); // Always draw background first
+            if (drawnRectangle) {
+                // If a final rectangle has been drawn, draw its border and the overlay image
+                drawRectangle(drawnRectangle.x, drawnRectangle.y, drawnRectangle.width, drawnRectangle.height);
+                drawOverlayImageInRectangle(drawnRectangle);
+            }
+        }
+
+        // Initialize canvas size based on its CSS size
+        function initializeCanvasSize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            redrawCanvas(); // Redraw content after resizing
+        }
+
+        // Event listeners for mouse interactions
+        canvas.addEventListener('mousedown', (e) => {
+            if (!isBackgroundImageLoaded) {
+                // Prevent drawing if no background image is loaded
+                console.warn("Carica prima un'immagine di sfondo.");
+                return;
+            }
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            drawnRectangle = null; // Clear any previously drawn rectangle
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            // Calculate width and height, ensuring they are positive
+            currentWidth = currentX - startX;
+            currentHeight = currentY - startY;
+
+            // Redraw the canvas content to show the live rectangle
+            redrawCanvas();
+            drawRectangle(startX, startY, currentWidth, currentHeight);
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            // Store the final rectangle dimensions
+            drawnRectangle = {
+                x: startX,
+                y: startY,
+                width: currentWidth,
+                height: currentHeight
+            };
+
+            // Redraw the canvas with the final rectangle and overlay image
+            redrawCanvas();
+        });
+
+        canvas.addEventListener('mouseout', () => {
+            // Handle case where mouse leaves canvas while dragging
+            if (isDrawing) {
+                isDrawing = false;
+                drawnRectangle = {
+                    x: startX,
+                    y: startY,
+                    width: currentWidth,
+                    height: currentHeight
+                };
+                redrawCanvas();
+            }
+        });
+
+        // Event listeners for image file inputs
+        backgroundImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadImage(backgroundImage, file, (loaded) => {
+                    isBackgroundImageLoaded = loaded;
+                    if (loaded) {
+                        redrawCanvas(); // Redraw with new background
+                    }
+                });
+            }
+        });
+
+        overlayImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadImage(overlayImage, file, (loaded) => {
+                    isOverlayImageLoaded = loaded;
+                    if (loaded && drawnRectangle) {
+                        redrawCanvas(); // Redraw to apply new overlay if rectangle exists
+                    }
+                });
+            }
+        });
+
+        // Event listener for reset button
+        resetButton.addEventListener('click', () => {
+            drawnRectangle = null; // Clear the drawn rectangle
+            isDrawing = false;
+            // Optionally, clear input fields if you want to force re-upload
+            // backgroundImageInput.value = '';
+            // overlayImageInput.value = '';
+            // isBackgroundImageLoaded = false;
+            // isOverlayImageLoaded = false;
+            // loadImage(backgroundImage, defaultBackgroundImageUrl, (loaded) => { isBackgroundImageLoaded = loaded; redrawCanvas(); });
+            // loadImage(overlayImage, defaultOverlayImageUrl, (loaded) => { isOverlayImageLoaded = loaded; redrawCanvas(); });
+            redrawCanvas(); // Redraw to clear the rectangle
+        });
+
+        // Handle window resize to make canvas responsive
+        window.addEventListener('resize', initializeCanvasSize);
+
+        // Initial load of default images and canvas size
+        window.onload = function() {
+            initializeCanvasSize();
+            loadImage(backgroundImage, defaultBackgroundImageUrl, (loaded) => {
+                isBackgroundImageLoaded = loaded;
+                redrawCanvas();
+            });
+            loadImage(overlayImage, defaultOverlayImageUrl, (loaded) => {
+                isOverlayImageLoaded = loaded;
+                // No redraw here, as overlay only appears when a rectangle is drawn
+            });
+        };
+    </script>
+</body>
+</html>
